@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import ReviewForm from "@/components/discover/ReviewForm";
+import FeedbackModal from "@/components/discover/FeedbackModal";
 import { AGE_GROUPS } from "@/lib/constants";
 
 interface Review {
@@ -33,6 +34,9 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const [video, setVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackCompleted, setFeedbackCompleted] = useState(false);
+  const [checkingFeedback, setCheckingFeedback] = useState(true);
 
   const fetchVideo = () => {
     fetch(`/api/videos/${id}`)
@@ -44,6 +48,11 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     fetchVideo();
+    fetch(`/api/videos/${id}/feedback`)
+      .then((res) => res.json())
+      .then((data) => setFeedbackCompleted(data.feedbackCompleted ?? false))
+      .catch(() => {})
+      .finally(() => setCheckingFeedback(false));
   }, [id]);
 
   if (loading) {
@@ -81,7 +90,7 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
       </Link>
 
       {/* YouTube Embed */}
-      <div className="relative w-full pt-[56.25%] bg-black rounded-xl overflow-hidden mb-6">
+      <div className="relative w-full pt-[56.25%] bg-black rounded-xl overflow-hidden mb-4">
         <iframe
           className="absolute inset-0 w-full h-full"
           src={`https://www.youtube.com/embed/${video.youtubeId}`}
@@ -90,6 +99,24 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
           allowFullScreen
         />
       </div>
+
+      {/* Done Watching / Feedback Status */}
+      {!checkingFeedback && !feedbackCompleted && (
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setFeedbackModalOpen(true)}
+            className="bg-teal-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors text-lg"
+          >
+            Done Watching - Rate This Video
+          </button>
+        </div>
+      )}
+      {feedbackCompleted && (
+        <div className="flex items-center justify-center gap-2 mb-6 text-teal-600">
+          <span className="text-lg">&#10003;</span>
+          <span className="font-medium">Thanks for your feedback!</span>
+        </div>
+      )}
 
       {/* Video Info */}
       <div className="bg-white rounded-xl p-6 border border-slate-100 mb-6">
@@ -122,10 +149,15 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Review Form */}
-      <div className="mb-6">
-        <ReviewForm videoId={video.id} onReviewSubmitted={fetchVideo} />
-      </div>
+      {/* Optional Detailed Review - only after mandatory feedback */}
+      {feedbackCompleted && (
+        <div className="mb-6">
+          <p className="text-sm text-slate-500 mb-2">
+            Want to share more? Leave an optional detailed review below.
+          </p>
+          <ReviewForm videoId={video.id} onReviewSubmitted={fetchVideo} />
+        </div>
+      )}
 
       {/* Reviews List */}
       <div>
@@ -175,6 +207,18 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        videoId={video.id}
+        videoTitle={video.title}
+        isOpen={feedbackModalOpen}
+        onSubmitted={() => {
+          setFeedbackModalOpen(false);
+          setFeedbackCompleted(true);
+          fetchVideo();
+        }}
+      />
     </div>
   );
 }

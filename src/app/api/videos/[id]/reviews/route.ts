@@ -39,18 +39,23 @@ export async function POST(
       include: { user: { select: { id: true, name: true } } },
     });
 
-    // Update video aggregate rating
-    const agg = await prisma.review.aggregate({
+    // Update video aggregate rating (prefer overallRating from feedback)
+    const allReviews = await prisma.review.findMany({
       where: { videoId },
-      _avg: { rating: true },
-      _count: true,
+      select: { rating: true, overallRating: true },
     });
+
+    const total = allReviews.reduce(
+      (sum, r) => sum + (r.overallRating ?? r.rating),
+      0
+    );
+    const avg = allReviews.length > 0 ? total / allReviews.length : 0;
 
     await prisma.video.update({
       where: { id: videoId },
       data: {
-        parentRating: agg._avg.rating || 0,
-        reviewCount: agg._count,
+        parentRating: avg,
+        reviewCount: allReviews.length,
       },
     });
 

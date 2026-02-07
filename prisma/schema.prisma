@@ -51,15 +51,20 @@ model Video {
 }
 
 model Review {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  videoId     Int
-  rating      Int
-  comment     String
-  helpfulTags String   @default("[]")
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
-  video       Video    @relation(fields: [videoId], references: [id])
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  videoId              Int
+  rating               Int
+  comment              String
+  helpfulTags          String   @default("[]")
+  educationalRating    Int?
+  ageAppropriateRating Int?
+  engagementRating     Int?
+  overallRating        Int?
+  feedbackCompleted    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id])
+  video                Video    @relation(fields: [videoId], references: [id])
 
   @@unique([userId, videoId])
 }

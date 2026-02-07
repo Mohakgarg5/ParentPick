@@ -58,6 +58,13 @@ export const CONTENT_PREFERENCES = [
   "Stories & reading",
 ] as const;
 
+export const FEEDBACK_CRITERIA = [
+  { key: "educationalRating", label: "Educational Value", description: "How much did your child learn?" },
+  { key: "ageAppropriateRating", label: "Age Appropriateness", description: "Was it right for your child's age?" },
+  { key: "engagementRating", label: "Child Engagement", description: "How engaged was your child?" },
+  { key: "overallRating", label: "Overall Rating", description: "Your overall impression" },
+] as const;
+
 export const HELPFUL_TAGS = [
   "Helped with tantrums",
   "Good for calming",
