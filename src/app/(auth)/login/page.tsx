@@ -31,6 +31,8 @@ export default function LoginPage() {
 
       if (!data.user.onboardingComplete) {
         router.push("/onboarding");
+      } else if (data.user.reviewCount < 3) {
+        router.push("/review-gate");
       } else {
         router.push("/discover");
       }

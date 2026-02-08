@@ -7,10 +7,11 @@ interface FeedbackModalProps {
   videoId: number;
   videoTitle: string;
   isOpen: boolean;
+  onClose?: () => void;
   onSubmitted: () => void;
 }
 
-export default function FeedbackModal({ videoId, videoTitle, isOpen, onSubmitted }: FeedbackModalProps) {
+export default function FeedbackModal({ videoId, videoTitle, isOpen, onClose, onSubmitted }: FeedbackModalProps) {
   const [ratings, setRatings] = useState<Record<string, number>>({
     educationalRating: 0,
     ageAppropriateRating: 0,
@@ -53,7 +54,15 @@ export default function FeedbackModal({ videoId, videoTitle, isOpen, onSubmitted
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            &#10005;
+          </button>
+        )}
         <h2 className="text-xl font-bold text-slate-800 text-center mb-1">
           How was this video?
         </h2>

@@ -12,6 +12,14 @@ export async function POST(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found. Please log out and log back in." },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const videoId = parseInt(id);
     const { rating, comment, helpfulTags } = await request.json();

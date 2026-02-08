@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
+    const reviewCount = await prisma.review.count({
+      where: { userId: user.id, feedbackCompleted: true },
+    });
+
     const token = signToken({ userId: user.id, email: user.email });
     const response = NextResponse.json({
       user: {
@@ -28,6 +32,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         email: user.email,
         onboardingComplete: user.onboardingComplete,
+        reviewCount,
       },
     });
     response.cookies.set("token", token, {

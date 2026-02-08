@@ -12,6 +12,15 @@ export async function POST(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Verify the user exists in DB (JWT may have stale userId after re-seed)
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found. Please log out and log back in." },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const videoId = parseInt(id);
     const { educationalRating, ageAppropriateRating, engagementRating, overallRating } =
@@ -26,31 +35,41 @@ export async function POST(
       }
     }
 
-    await prisma.review.upsert({
+    // Use findUnique + create/update instead of upsert for better compatibility
+    const existing = await prisma.review.findUnique({
       where: {
         userId_videoId: { userId: payload.userId, videoId },
       },
-      create: {
-        userId: payload.userId,
-        videoId,
-        rating: overallRating,
-        comment: "",
-        helpfulTags: "[]",
-        educationalRating,
-        ageAppropriateRating,
-        engagementRating,
-        overallRating,
-        feedbackCompleted: true,
-      },
-      update: {
-        educationalRating,
-        ageAppropriateRating,
-        engagementRating,
-        overallRating,
-        rating: overallRating,
-        feedbackCompleted: true,
-      },
     });
+
+    if (existing) {
+      await prisma.review.update({
+        where: { id: existing.id },
+        data: {
+          educationalRating,
+          ageAppropriateRating,
+          engagementRating,
+          overallRating,
+          rating: overallRating,
+          feedbackCompleted: true,
+        },
+      });
+    } else {
+      await prisma.review.create({
+        data: {
+          userId: payload.userId,
+          videoId,
+          rating: overallRating,
+          comment: "",
+          helpfulTags: "[]",
+          educationalRating,
+          ageAppropriateRating,
+          engagementRating,
+          overallRating,
+          feedbackCompleted: true,
+        },
+      });
+    }
 
     const allReviews = await prisma.review.findMany({
       where: { videoId },
@@ -72,8 +91,10 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  } catch (err) {
+    console.error("Feedback POST error:", err);
+    const message = err instanceof Error ? err.message : "Something went wrong";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

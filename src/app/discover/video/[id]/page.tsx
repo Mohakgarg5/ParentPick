@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, useCallback, use } from "react";
 import Link from "next/link";
 import ReviewForm from "@/components/discover/ReviewForm";
 import FeedbackModal from "@/components/discover/FeedbackModal";
 import { AGE_GROUPS } from "@/lib/constants";
+
+declare global {
+  interface Window {
+    YT: typeof YT;
+    onYouTubeIframeAPIReady: (() => void) | undefined;
+  }
+}
 
 interface Review {
   id: number;
@@ -37,6 +44,8 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackCompleted, setFeedbackCompleted] = useState(false);
   const [checkingFeedback, setCheckingFeedback] = useState(true);
+  const playerRef = useRef<YT.Player | null>(null);
+  const feedbackCompletedRef = useRef(false);
 
   const fetchVideo = () => {
     fetch(`/api/videos/${id}`)
@@ -45,6 +54,55 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  const onVideoEnd = useCallback(() => {
+    if (!feedbackCompletedRef.current) {
+      setFeedbackModalOpen(true);
+    }
+  }, []);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    feedbackCompletedRef.current = feedbackCompleted;
+  }, [feedbackCompleted]);
+
+  // Load YouTube IFrame API and create player
+  useEffect(() => {
+    if (!video) return;
+
+    const createPlayer = () => {
+      if (playerRef.current) return;
+      playerRef.current = new window.YT.Player("yt-player", {
+        videoId: video.youtubeId,
+        playerVars: { rel: 0, modestbranding: 1 },
+        events: {
+          onStateChange: (event: YT.OnStateChangeEvent) => {
+            if (event.data === window.YT.PlayerState.ENDED) {
+              onVideoEnd();
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      createPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = createPlayer;
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+    }
+
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, [video, onVideoEnd]);
 
   useEffect(() => {
     fetchVideo();
@@ -89,15 +147,9 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
         &larr; Back to Discover
       </Link>
 
-      {/* YouTube Embed */}
+      {/* YouTube Player (IFrame API) */}
       <div className="relative w-full pt-[56.25%] bg-black rounded-xl overflow-hidden mb-4">
-        <iframe
-          className="absolute inset-0 w-full h-full"
-          src={`https://www.youtube.com/embed/${video.youtubeId}`}
-          title={video.title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+        <div id="yt-player" className="absolute inset-0 w-full h-full" />
       </div>
 
       {/* Done Watching / Feedback Status */}
@@ -213,6 +265,7 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
         videoId={video.id}
         videoTitle={video.title}
         isOpen={feedbackModalOpen}
+        onClose={() => setFeedbackModalOpen(false)}
         onSubmitted={() => {
           setFeedbackModalOpen(false);
           setFeedbackCompleted(true);

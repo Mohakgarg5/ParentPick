@@ -29,6 +29,7 @@ export default function Navbar() {
 
   const navLinks = [
     { href: "/discover", label: "Discover" },
+    { href: "/reviews", label: "Reviews" },
     { href: "/groups", label: "Groups" },
     { href: "/profile", label: "Profile" },
   ];

@@ -4,6 +4,17 @@ import { useState, useEffect } from "react";
 import VideoCard from "@/components/discover/VideoCard";
 import { AGE_GROUPS, SITUATIONAL_TAGS, CATEGORIES } from "@/lib/constants";
 
+const PREF_TO_CATEGORY: Record<string, string[]> = {
+  "Educational & learning": ["Educational"],
+  "Calming & slow-paced": ["Calming"],
+  "Creative & artistic": ["Creative"],
+  "Social skills & emotions": ["Social Skills"],
+  "Music & songs": ["Language"],
+  "Physical activity & dance": ["Motor Skills"],
+  "Nature & animals": ["Educational"],
+  "Stories & reading": ["Language"],
+};
+
 interface Video {
   id: number;
   youtubeId: string;
@@ -26,6 +37,8 @@ export default function DiscoverPage() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [userAge, setUserAge] = useState<number | null>(null);
+  const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
+  const [childName, setChildName] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -33,12 +46,18 @@ export default function DiscoverPage() {
       .then((data) => {
         if (data.user?.childAge) {
           setUserAge(data.user.childAge);
+          setChildName(data.user.childName || null);
           const group = AGE_GROUPS.find(
             (g) => data.user.childAge >= g.ageMin && data.user.childAge <= g.ageMax
           );
           if (group) {
             setSelectedAge({ min: group.ageMin, max: group.ageMax });
           }
+        }
+        if (data.user?.preferences?.contentPrefs) {
+          const prefs: string[] = JSON.parse(data.user.preferences.contentPrefs);
+          const cats = prefs.flatMap((p) => PREF_TO_CATEGORY[p] || []);
+          setPreferredCategories([...new Set(cats)]);
         }
       })
       .catch(() => {});
@@ -65,12 +84,16 @@ export default function DiscoverPage() {
       .finally(() => setLoading(false));
   }, [selectedAge, selectedTag, selectedCategory]);
 
+  const recommendedVideos = preferredCategories.length > 0 && !selectedCategory && !selectedTag
+    ? videos.filter((v) => preferredCategories.includes(v.category))
+    : [];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Discover</h1>
         <p className="text-slate-600 mt-1">
-          Content recommended by real parents{userAge ? ` for your ${userAge}-year-old` : ""}
+          Content recommended by real parents{childName ? ` for ${childName}` : userAge ? ` for your ${userAge}-year-old` : ""}
         </p>
       </div>
 
@@ -168,7 +191,20 @@ export default function DiscoverPage() {
         </div>
       </div>
 
-      {/* Video Grid */}
+      {/* Recommended for You */}
+      {!loading && recommendedVideos.length > 0 && (
+        <div className="mb-10">
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Recommended for {childName || "You"}</h2>
+          <p className="text-sm text-slate-500 mb-4">Based on your content preferences</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {recommendedVideos.slice(0, 4).map((video) => (
+              <VideoCard key={video.id} {...video} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* All Videos */}
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin h-8 w-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto" />
