@@ -17,12 +17,22 @@ model User {
   onboardingComplete Boolean          @default(false)
   createdAt          DateTime         @default(now())
   preferences        UserPreferences?
+  children           Child[]
   reviews            Review[]
   posts              Post[]
   comments           Comment[]
   votes              Vote[]
   groupMemberships   GroupMember[]
   videoViews         VideoView[]
+}
+
+model Child {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  name        String
+  dateOfBirth DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
 }
 
 model UserPreferences {

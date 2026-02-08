@@ -37,17 +37,31 @@ export default function DiscoverPage() {
   const [selectedAge, setSelectedAge] = useState<{ min: number; max: number } | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [userAge, setUserAge] = useState<number | null>(null);
   const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
-  const [childName, setChildName] = useState<string | null>(null);
+  const [childNames, setChildNames] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((data) => {
-        if (data.user?.childAge) {
-          setUserAge(data.user.childAge);
-          setChildName(data.user.childName || null);
+        // Use children array for age-based filtering
+        if (data.user?.children?.length > 0) {
+          const ages = data.user.children.map((c: { age: number }) => c.age);
+          const minAge = Math.min(...ages);
+          const maxAge = Math.max(...ages);
+          setChildNames(data.user.children.map((c: { name: string }) => c.name));
+          const group = AGE_GROUPS.find(
+            (g) => minAge >= g.ageMin && maxAge <= g.ageMax
+          );
+          if (group) {
+            setSelectedAge({ min: group.ageMin, max: group.ageMax });
+          } else {
+            // Children span multiple age groups - show the full range
+            setSelectedAge({ min: minAge, max: maxAge });
+          }
+        } else if (data.user?.childAge) {
+          // Fallback to legacy fields
+          if (data.user.childName) setChildNames([data.user.childName]);
           const group = AGE_GROUPS.find(
             (g) => data.user.childAge >= g.ageMin && data.user.childAge <= g.ageMax
           );
@@ -94,7 +108,7 @@ export default function DiscoverPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Discover</h1>
         <p className="text-slate-600 mt-1">
-          Content recommended by real parents{childName ? ` for ${childName}` : userAge ? ` for your ${userAge}-year-old` : ""}
+          Content recommended by real parents{childNames.length > 0 ? ` for ${childNames.join(" & ")}` : ""}
         </p>
       </div>
 
@@ -195,7 +209,7 @@ export default function DiscoverPage() {
       {/* Recommended for You */}
       {!loading && recommendedVideos.length > 0 && (
         <div className="mb-10">
-          <h2 className="text-xl font-bold text-slate-800 mb-1">Recommended for {childName || "You"}</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Recommended for {childNames.length > 0 ? childNames.join(" & ") : "You"}</h2>
           <p className="text-sm text-slate-500 mb-4">Based on your content preferences</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {recommendedVideos.slice(0, 4).map((video) => (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateAge } from "@/lib/age";
 
 export async function GET() {
   try {
@@ -18,12 +19,24 @@ export async function GET() {
         childName: true,
         childAge: true,
         preferences: true,
+        children: { orderBy: { dateOfBirth: "asc" } },
         groupMemberships: { include: { group: true } },
         _count: { select: { reviews: true, posts: true, comments: true } },
       },
     });
 
-    return NextResponse.json({ user });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const childrenWithAge = user.children.map((child) => ({
+      ...child,
+      age: calculateAge(child.dateOfBirth),
+    }));
+
+    return NextResponse.json({
+      user: { ...user, children: childrenWithAge },
+    });
   } catch {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }

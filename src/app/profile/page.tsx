@@ -1,6 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+
+interface ChildInfo {
+  id: number;
+  name: string;
+  dateOfBirth: string;
+  age: number;
+}
 
 interface UserProfile {
   id: number;
@@ -8,6 +16,7 @@ interface UserProfile {
   email: string;
   childName: string | null;
   childAge: number | null;
+  children: ChildInfo[];
   preferences: {
     concerns: string;
     situations: string;
@@ -20,41 +29,16 @@ interface UserProfile {
 export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [childName, setChildName] = useState("");
-  const [childAge, setChildAge] = useState("");
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
       .then((data) => {
-        if (data.user) {
-          setUser(data.user);
-          setChildName(data.user.childName || "");
-          setChildAge(data.user.childAge?.toString() || "");
-        }
+        if (data.user) setUser(data.user);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  const handleSave = async () => {
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childName, childAge }),
-      });
-      if (res.ok) {
-        setEditing(false);
-        setUser((prev) =>
-          prev
-            ? { ...prev, childName, childAge: parseInt(childAge) }
-            : prev
-        );
-      }
-    } catch {}
-  };
 
   if (loading) {
     return (
@@ -69,6 +53,8 @@ export default function ProfilePage() {
   const concerns: string[] = user.preferences ? JSON.parse(user.preferences.concerns) : [];
   const situations: string[] = user.preferences ? JSON.parse(user.preferences.situations) : [];
   const contentPrefs: string[] = user.preferences ? JSON.parse(user.preferences.contentPrefs) : [];
+
+  const hasChildren = user.children && user.children.length > 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -102,40 +88,29 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Child Info */}
+      {/* Children */}
       <div className="bg-white rounded-xl p-6 border border-slate-100 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">Child Information</h3>
-          <button
-            onClick={() => (editing ? handleSave() : setEditing(true))}
-            className="text-sm text-teal-600 font-medium hover:underline"
-          >
-            {editing ? "Save" : "Edit"}
-          </button>
-        </div>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          {hasChildren ? "Your Children" : "Child Information"}
+        </h3>
 
-        {editing ? (
+        {hasChildren ? (
           <div className="space-y-3">
-            <div>
-              <label className="block text-sm text-slate-600 mb-1">Name</label>
-              <input
-                value={childName}
-                onChange={(e) => setChildName(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-slate-600 mb-1">Age</label>
-              <select
-                value={childAge}
-                onChange={(e) => setChildAge(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                {[1, 2, 3, 4, 5, 6].map((a) => (
-                  <option key={a} value={a}>{a} years old</option>
-                ))}
-              </select>
-            </div>
+            {user.children.map((child) => (
+              <div key={child.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <div className="w-10 h-10 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center font-semibold text-sm">
+                  {child.name[0]}
+                </div>
+                <div>
+                  <p className="font-medium text-slate-800">{child.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {child.age === 0 ? "Under 1 year" : `${child.age} year${child.age !== 1 ? "s" : ""} old`}
+                    {" · Born "}
+                    {new Date(child.dateOfBirth).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-2">
@@ -158,10 +133,10 @@ export default function ProfilePage() {
         ) : (
           <div className="space-y-2">
             {user.groupMemberships.map((m) => (
-              <div key={m.group.id} className="flex items-center gap-2 text-slate-600">
+              <Link key={m.group.id} href={`/groups/${m.group.id}`} className="flex items-center gap-2 text-slate-600 hover:text-teal-600">
                 <span>{m.group.icon}</span>
                 <span>{m.group.name}</span>
-              </div>
+              </Link>
             ))}
           </div>
         )}

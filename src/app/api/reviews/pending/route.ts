@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateAge } from "@/lib/age";
 
 export async function GET() {
   try {
@@ -15,8 +16,20 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { childAge: true },
+      select: { childAge: true, children: { select: { dateOfBirth: true } } },
     });
+
+    // Get age range from children, fallback to legacy childAge
+    let minAge: number | null = null;
+    let maxAge: number | null = null;
+    if (user?.children && user.children.length > 0) {
+      const ages = user.children.map((c) => calculateAge(c.dateOfBirth));
+      minAge = Math.min(...ages);
+      maxAge = Math.max(...ages);
+    } else if (user?.childAge) {
+      minAge = user.childAge;
+      maxAge = user.childAge;
+    }
 
     const reviewedVideoIds = await prisma.review.findMany({
       where: { userId: payload.userId },
@@ -48,9 +61,9 @@ export async function GET() {
       if (excludeIds.length > 0) {
         where.id = { notIn: excludeIds };
       }
-      if (user?.childAge) {
-        where.ageMin = { lte: user.childAge };
-        where.ageMax = { gte: user.childAge };
+      if (minAge !== null && maxAge !== null) {
+        where.ageMin = { lte: maxAge };
+        where.ageMax = { gte: minAge };
       }
 
       fillVideos = await prisma.video.findMany({

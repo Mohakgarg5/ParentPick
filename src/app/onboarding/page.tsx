@@ -4,7 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CONCERNS, SITUATIONS, CONTENT_PREFERENCES } from "@/lib/constants";
 
-const STEPS = ["Child Info", "Concerns", "Situations", "Preferences"];
+const STEPS = ["Children", "Concerns", "Situations", "Preferences"];
+
+interface ChildEntry {
+  name: string;
+  dateOfBirth: string;
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -12,8 +17,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [childName, setChildName] = useState("");
-  const [childAge, setChildAge] = useState("");
+  const [children, setChildren] = useState<ChildEntry[]>([{ name: "", dateOfBirth: "" }]);
   const [concerns, setConcerns] = useState<string[]>([]);
   const [situations, setSituations] = useState<string[]>([]);
   const [contentPrefs, setContentPrefs] = useState<string[]>([]);
@@ -28,10 +32,46 @@ export default function OnboardingPage() {
     );
   };
 
+  const updateChild = (index: number, field: keyof ChildEntry, value: string) => {
+    setChildren((prev) =>
+      prev.map((child, i) => (i === index ? { ...child, [field]: value } : child))
+    );
+  };
+
+  const addChild = () => {
+    setChildren((prev) => [...prev, { name: "", dateOfBirth: "" }]);
+  };
+
+  const removeChild = (index: number) => {
+    if (children.length <= 1) return;
+    setChildren((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getAge = (dob: string) => {
+    if (!dob) return null;
+    const today = new Date();
+    const birth = new Date(dob);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return Math.max(0, age);
+  };
+
   const handleNext = () => {
-    if (step === 0 && (!childName || !childAge)) {
-      setError("Please fill in your child's name and age");
-      return;
+    if (step === 0) {
+      const valid = children.every((c) => c.name.trim() && c.dateOfBirth);
+      if (!valid) {
+        setError("Please fill in each child's name and date of birth");
+        return;
+      }
+      const hasOutOfRange = children.some((c) => {
+        const age = getAge(c.dateOfBirth);
+        return age === null || age < 0 || age > 12;
+      });
+      if (hasOutOfRange) {
+        setError("Please enter a valid date of birth");
+        return;
+      }
     }
     setError("");
     setStep(step + 1);
@@ -43,7 +83,7 @@ export default function OnboardingPage() {
       const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childName, childAge, concerns, situations, contentPrefs }),
+        body: JSON.stringify({ children, concerns, situations, contentPrefs }),
       });
 
       if (!res.ok) {
@@ -59,6 +99,10 @@ export default function OnboardingPage() {
       setLoading(false);
     }
   };
+
+  // Max date = today, min date = 12 years ago
+  const today = new Date().toISOString().split("T")[0];
+  const minDate = new Date(new Date().setFullYear(new Date().getFullYear() - 12)).toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-[#FFF7ED] flex items-center justify-center px-4">
@@ -91,42 +135,75 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 1: Child Info */}
+          {/* Step 1: Children Info */}
           {step === 0 && (
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-slate-800">
-                Tell us about your child
+                Tell us about your kids
               </h3>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Child&apos;s Name
-                </label>
-                <input
-                  type="text"
-                  value={childName}
-                  onChange={(e) => setChildName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  placeholder="e.g., Emma"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Child&apos;s Age
-                </label>
-                <select
-                  value={childAge}
-                  onChange={(e) => setChildAge(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  <option value="">Select age</option>
-                  <option value="1">1 year old</option>
-                  <option value="2">2 years old</option>
-                  <option value="3">3 years old</option>
-                  <option value="4">4 years old</option>
-                  <option value="5">5 years old</option>
-                  <option value="6">6 years old</option>
-                </select>
-              </div>
+              <p className="text-sm text-slate-500">
+                Add each child so we can recommend age-appropriate content.
+              </p>
+
+              {children.map((child, index) => {
+                const age = getAge(child.dateOfBirth);
+                return (
+                  <div key={index} className="border border-slate-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-600">
+                        Child {index + 1}
+                      </span>
+                      {children.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeChild(index)}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={child.name}
+                        onChange={(e) => updateChild(index, "name", e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="e.g., Emma"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Date of Birth
+                      </label>
+                      <input
+                        type="date"
+                        value={child.dateOfBirth}
+                        onChange={(e) => updateChild(index, "dateOfBirth", e.target.value)}
+                        min={minDate}
+                        max={today}
+                        className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                      {age !== null && (
+                        <p className="text-xs text-teal-600 mt-1">
+                          {age === 0 ? "Under 1 year old" : `${age} year${age !== 1 ? "s" : ""} old`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={addChild}
+                className="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-sm text-slate-500 hover:border-teal-300 hover:text-teal-600 transition-colors"
+              >
+                + Add Another Child
+              </button>
             </div>
           )}
 

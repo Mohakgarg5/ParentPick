@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateAge } from "@/lib/age";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,17 +10,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { childName, childAge, concerns, situations, contentPrefs } = await request.json();
+    const { children, concerns, situations, contentPrefs } = await request.json();
 
-    if (!childName || !childAge) {
-      return NextResponse.json({ error: "Child name and age are required" }, { status: 400 });
+    if (!children || children.length === 0) {
+      return NextResponse.json({ error: "Please add at least one child" }, { status: 400 });
     }
+
+    for (const child of children) {
+      if (!child.name || !child.dateOfBirth) {
+        return NextResponse.json({ error: "Each child needs a name and date of birth" }, { status: 400 });
+      }
+    }
+
+    // Create children records
+    for (const child of children) {
+      await prisma.child.create({
+        data: {
+          userId: payload.userId,
+          name: child.name,
+          dateOfBirth: new Date(child.dateOfBirth),
+        },
+      });
+    }
+
+    // Keep legacy fields populated with first child's data for backward compatibility
+    const firstChild = children[0];
+    const firstAge = calculateAge(firstChild.dateOfBirth);
 
     await prisma.user.update({
       where: { id: payload.userId },
       data: {
-        childName,
-        childAge: parseInt(childAge),
+        childName: firstChild.name,
+        childAge: firstAge,
         onboardingComplete: true,
       },
     });
@@ -39,24 +61,32 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Auto-join the matching age group
-    const age = parseInt(childAge);
-    const matchingGroup = await prisma.group.findFirst({
-      where: { ageMin: { lte: age }, ageMax: { gte: age } },
-    });
+    // Auto-join matching age groups for all children
+    const ages = children.map((c: { dateOfBirth: string }) => calculateAge(c.dateOfBirth));
+    const uniqueAges = [...new Set(ages)] as number[];
 
-    if (matchingGroup) {
-      await prisma.groupMember.upsert({
-        where: {
-          userId_groupId: { userId: payload.userId, groupId: matchingGroup.id },
-        },
-        create: { userId: payload.userId, groupId: matchingGroup.id },
-        update: {},
+    for (const age of uniqueAges) {
+      const matchingGroup = await prisma.group.findFirst({
+        where: { ageMin: { lte: age }, ageMax: { gte: age } },
       });
-      await prisma.group.update({
-        where: { id: matchingGroup.id },
-        data: { memberCount: { increment: 1 } },
-      });
+
+      if (matchingGroup) {
+        const existing = await prisma.groupMember.findUnique({
+          where: {
+            userId_groupId: { userId: payload.userId, groupId: matchingGroup.id },
+          },
+        });
+
+        if (!existing) {
+          await prisma.groupMember.create({
+            data: { userId: payload.userId, groupId: matchingGroup.id },
+          });
+          await prisma.group.update({
+            where: { id: matchingGroup.id },
+            data: { memberCount: { increment: 1 } },
+          });
+        }
+      }
     }
 
     return NextResponse.json({ success: true });

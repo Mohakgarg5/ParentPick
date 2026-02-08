@@ -23,9 +23,11 @@ async function main() {
     await prisma.vote.deleteMany();
     await prisma.comment.deleteMany();
     await prisma.post.deleteMany();
+    await prisma.videoView.deleteMany();
     await prisma.review.deleteMany();
     await prisma.groupMember.deleteMany();
     await prisma.userPreferences.deleteMany();
+    await prisma.child.deleteMany();
     await prisma.video.deleteMany();
     await prisma.group.deleteMany();
     await prisma.user.deleteMany();
@@ -64,6 +66,19 @@ async function main() {
     users.push(user);
   }
   console.log(`Created ${users.length} users`);
+
+  // Create children records (DOB calculated from childAge for sample data)
+  const childrenData = [
+    { userId: users[0].id, name: "Mia", dateOfBirth: new Date(new Date().getFullYear() - 3, 2, 15) },
+    { userId: users[1].id, name: "Jayden", dateOfBirth: new Date(new Date().getFullYear() - 5, 7, 22) },
+    { userId: users[1].id, name: "Lily", dateOfBirth: new Date(new Date().getFullYear() - 2, 11, 5) },
+    { userId: users[2].id, name: "Sofia", dateOfBirth: new Date(new Date().getFullYear() - 2, 5, 10) },
+  ];
+
+  for (const child of childrenData) {
+    await prisma.child.create({ data: child });
+  }
+  console.log(`Created ${childrenData.length} children`);
 
   // Add group memberships
   await prisma.groupMember.create({ data: { userId: users[0].id, groupId: groups[2].id } });
