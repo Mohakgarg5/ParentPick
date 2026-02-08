@@ -23,10 +23,10 @@ export async function POST(
 
     const { id } = await params;
     const videoId = parseInt(id);
-    const { educationalRating, ageAppropriateRating, engagementRating, overallRating } =
+    const { educationalRating, ageAppropriateRating, engagementRating, stimulationRating, overallRating, contentTags } =
       await request.json();
 
-    for (const r of [educationalRating, ageAppropriateRating, engagementRating, overallRating]) {
+    for (const r of [educationalRating, ageAppropriateRating, engagementRating, stimulationRating, overallRating]) {
       if (!r || r < 1 || r > 5) {
         return NextResponse.json(
           { error: "All ratings must be between 1 and 5" },
@@ -42,6 +42,8 @@ export async function POST(
       },
     });
 
+    const parsedContentTags = JSON.stringify(contentTags || []);
+
     if (existing) {
       await prisma.review.update({
         where: { id: existing.id },
@@ -49,8 +51,10 @@ export async function POST(
           educationalRating,
           ageAppropriateRating,
           engagementRating,
+          stimulationRating,
           overallRating,
           rating: overallRating,
+          contentTags: parsedContentTags,
           feedbackCompleted: true,
         },
       });
@@ -62,9 +66,11 @@ export async function POST(
           rating: overallRating,
           comment: "",
           helpfulTags: "[]",
+          contentTags: parsedContentTags,
           educationalRating,
           ageAppropriateRating,
           engagementRating,
+          stimulationRating,
           overallRating,
           feedbackCompleted: true,
         },
@@ -73,7 +79,7 @@ export async function POST(
 
     const allReviews = await prisma.review.findMany({
       where: { videoId },
-      select: { rating: true, overallRating: true },
+      select: { rating: true, overallRating: true, stimulationRating: true },
     });
 
     const total = allReviews.reduce(
@@ -82,11 +88,16 @@ export async function POST(
     );
     const avg = allReviews.length > 0 ? total / allReviews.length : 0;
 
+    const stimReviews = allReviews.filter((r) => r.stimulationRating != null);
+    const stimTotal = stimReviews.reduce((sum, r) => sum + (r.stimulationRating ?? 0), 0);
+    const stimAvg = stimReviews.length > 0 ? stimTotal / stimReviews.length : null;
+
     await prisma.video.update({
       where: { id: videoId },
       data: {
         parentRating: avg,
         reviewCount: allReviews.length,
+        stimulationLevel: stimAvg,
       },
     });
 

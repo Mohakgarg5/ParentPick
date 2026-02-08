@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, use } from "react";
 import Link from "next/link";
 import ReviewForm from "@/components/discover/ReviewForm";
 import FeedbackModal from "@/components/discover/FeedbackModal";
-import { AGE_GROUPS } from "@/lib/constants";
+import { AGE_GROUPS, STIMULATION_LABELS } from "@/lib/constants";
 
 declare global {
   interface Window {
@@ -34,6 +34,7 @@ interface Video {
   tags: string;
   parentRating: number;
   reviewCount: number;
+  stimulationLevel: number | null;
   reviews: Review[];
 }
 
@@ -55,11 +56,20 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
       .finally(() => setLoading(false));
   };
 
+  const trackView = useCallback((completed: boolean) => {
+    fetch(`/api/videos/${id}/view`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed }),
+    }).catch(() => {});
+  }, [id]);
+
   const onVideoEnd = useCallback(() => {
+    trackView(true);
     if (!feedbackCompletedRef.current) {
       setFeedbackModalOpen(true);
     }
-  }, []);
+  }, [trackView]);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -77,6 +87,9 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
         playerVars: { rel: 0, modestbranding: 1 },
         events: {
           onStateChange: (event: YT.OnStateChangeEvent) => {
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              trackView(false);
+            }
             if (event.data === window.YT.PlayerState.ENDED) {
               onVideoEnd();
             }
@@ -133,6 +146,9 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
   const ageGroup = AGE_GROUPS.find(
     (g) => g.ageMin <= video.ageMin && g.ageMax >= video.ageMax
   );
+  const stimLabel = video.stimulationLevel
+    ? STIMULATION_LABELS.find((s) => s.level === Math.round(video.stimulationLevel!))
+    : null;
 
   const renderStars = (rating: number) =>
     Array.from({ length: 5 }, (_, i) => (
@@ -185,6 +201,11 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
           <span className={`text-xs px-3 py-1 rounded-full font-medium ${ageGroup?.color || "bg-slate-100"}`}>
             {ageGroup?.icon} Ages {video.ageMin}-{video.ageMax}
           </span>
+          {stimLabel && (
+            <span className={`text-xs px-3 py-1 rounded-full font-medium ${stimLabel.color}`}>
+              {stimLabel.label}
+            </span>
+          )}
         </div>
 
         <p className="text-slate-600 mt-4">{video.description}</p>

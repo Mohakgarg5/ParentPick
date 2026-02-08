@@ -28,6 +28,7 @@ interface Video {
   thumbnailUrl: string;
   parentRating: number;
   reviewCount: number;
+  stimulationLevel: number | null;
 }
 
 export default function DiscoverPage() {

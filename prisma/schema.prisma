@@ -22,6 +22,7 @@ model User {
   comments           Comment[]
   votes              Vote[]
   groupMemberships   GroupMember[]
+  videoViews         VideoView[]
 }
 
 model UserPreferences {
@@ -34,20 +35,22 @@ model UserPreferences {
 }
 
 model Video {
-  id           Int      @id @default(autoincrement())
-  youtubeId    String
-  title        String
-  description  String
-  channelName  String
-  ageMin       Int
-  ageMax       Int
-  category     String
-  tags         String   @default("[]")
-  thumbnailUrl String
-  parentRating Float    @default(0)
-  reviewCount  Int      @default(0)
-  createdAt    DateTime @default(now())
-  reviews      Review[]
+  id               Int         @id @default(autoincrement())
+  youtubeId        String
+  title            String
+  description      String
+  channelName      String
+  ageMin           Int
+  ageMax           Int
+  category         String
+  tags             String      @default("[]")
+  thumbnailUrl     String
+  parentRating     Float       @default(0)
+  reviewCount      Int         @default(0)
+  stimulationLevel Float?
+  createdAt        DateTime    @default(now())
+  reviews          Review[]
+  views            VideoView[]
 }
 
 model Review {
@@ -57,14 +60,28 @@ model Review {
   rating               Int
   comment              String
   helpfulTags          String   @default("[]")
+  contentTags          String   @default("[]")
   educationalRating    Int?
   ageAppropriateRating Int?
   engagementRating     Int?
   overallRating        Int?
+  stimulationRating    Int?
   feedbackCompleted    Boolean  @default(false)
   createdAt            DateTime @default(now())
   user                 User     @relation(fields: [userId], references: [id])
   video                Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+}
+
+model VideoView {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  videoId   Int
+  watchedAt DateTime @default(now())
+  completed Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id])
+  video     Video    @relation(fields: [videoId], references: [id])
 
   @@unique([userId, videoId])
 }

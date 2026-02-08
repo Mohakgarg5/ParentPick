@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FEEDBACK_CRITERIA } from "@/lib/constants";
+import { FEEDBACK_CRITERIA, CONTENT_QUALITY_TAGS } from "@/lib/constants";
 
 interface FeedbackModalProps {
   videoId: number;
@@ -16,15 +16,23 @@ export default function FeedbackModal({ videoId, videoTitle, isOpen, onClose, on
     educationalRating: 0,
     ageAppropriateRating: 0,
     engagementRating: 0,
+    stimulationRating: 0,
     overallRating: 0,
   });
   const [hoverRatings, setHoverRatings] = useState<Record<string, number>>({});
+  const [selectedContentTags, setSelectedContentTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
   const allRated = Object.values(ratings).every((r) => r > 0);
+
+  const toggleTag = (tag: string) => {
+    setSelectedContentTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
 
   const handleSubmit = async () => {
     if (!allRated) {
@@ -37,7 +45,7 @@ export default function FeedbackModal({ videoId, videoTitle, isOpen, onClose, on
       const res = await fetch(`/api/videos/${videoId}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ratings),
+        body: JSON.stringify({ ...ratings, contentTags: selectedContentTags }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -54,7 +62,7 @@ export default function FeedbackModal({ videoId, videoTitle, isOpen, onClose, on
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         {onClose && (
           <button
             onClick={onClose}
@@ -114,6 +122,29 @@ export default function FeedbackModal({ videoId, videoTitle, isOpen, onClose, on
           ))}
         </div>
 
+        {/* Content Quality Tags */}
+        <div className="mt-5 pt-5 border-t border-slate-100">
+          <p className="font-medium text-slate-700 text-sm mb-2">
+            Describe this content <span className="text-slate-400 font-normal">(optional)</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CONTENT_QUALITY_TAGS.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  selectedContentTags.includes(tag)
+                    ? "bg-teal-500 text-white border-teal-500"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-teal-300"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg mt-4 text-sm">
             {error}
@@ -130,7 +161,7 @@ export default function FeedbackModal({ videoId, videoTitle, isOpen, onClose, on
 
         {!allRated && (
           <p className="text-xs text-slate-400 text-center mt-2">
-            Please rate all 4 criteria to submit
+            Please rate all 5 criteria to submit
           </p>
         )}
       </div>

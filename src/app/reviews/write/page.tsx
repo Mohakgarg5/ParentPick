@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AGE_GROUPS, FEEDBACK_CRITERIA, HELPFUL_TAGS } from "@/lib/constants";
+import { AGE_GROUPS, FEEDBACK_CRITERIA, HELPFUL_TAGS, CONTENT_QUALITY_TAGS } from "@/lib/constants";
 
 interface Video {
   id: number;
@@ -29,11 +29,13 @@ export default function WriteReviewPage() {
     educationalRating: 0,
     ageAppropriateRating: 0,
     engagementRating: 0,
+    stimulationRating: 0,
     overallRating: 0,
   });
   const [hoverRatings, setHoverRatings] = useState<Record<string, number>>({});
   const [comment, setComment] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedContentTags, setSelectedContentTags] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -65,7 +67,7 @@ export default function WriteReviewPage() {
       const feedbackRes = await fetch(`/api/videos/${selectedVideo.id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ratings),
+        body: JSON.stringify({ ...ratings, contentTags: selectedContentTags }),
       });
 
       if (!feedbackRes.ok) {
@@ -125,7 +127,7 @@ export default function WriteReviewPage() {
               onClick={() => {
                 setSelectedVideo(null);
                 setStep("select");
-                setRatings({ educationalRating: 0, ageAppropriateRating: 0, engagementRating: 0, overallRating: 0 });
+                setRatings({ educationalRating: 0, ageAppropriateRating: 0, engagementRating: 0, stimulationRating: 0, overallRating: 0 });
                 setComment("");
                 setSelectedTags([]);
               }}
@@ -173,7 +175,7 @@ export default function WriteReviewPage() {
 
         <div className="bg-white rounded-xl p-6 border border-slate-100">
           <h2 className="text-xl font-bold text-slate-800 mb-1">Rate This Video</h2>
-          <p className="text-sm text-slate-500 mb-6">Rate across 4 criteria</p>
+          <p className="text-sm text-slate-500 mb-6">Rate across 5 criteria</p>
 
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
@@ -251,6 +253,30 @@ export default function WriteReviewPage() {
                 ))}
               </div>
             </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-slate-600 mb-2">Content Quality Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {CONTENT_QUALITY_TAGS.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() =>
+                      setSelectedContentTags((prev) =>
+                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                      )
+                    }
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      selectedContentTags.includes(tag)
+                        ? "bg-purple-500 text-white border-purple-500"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-purple-300"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <button
@@ -263,7 +289,7 @@ export default function WriteReviewPage() {
 
           {!allRated && (
             <p className="text-xs text-slate-400 text-center mt-2">
-              Please rate all 4 criteria to submit
+              Please rate all 5 criteria to submit
             </p>
           )}
         </div>

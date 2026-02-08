@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AGE_GROUPS } from "@/lib/constants";
+import { AGE_GROUPS, STIMULATION_LABELS } from "@/lib/constants";
 
 interface VideoCardProps {
   id: number;
@@ -14,6 +14,7 @@ interface VideoCardProps {
   tags: string;
   parentRating: number;
   reviewCount: number;
+  stimulationLevel?: number | null;
 }
 
 export default function VideoCard({
@@ -27,11 +28,16 @@ export default function VideoCard({
   tags,
   parentRating,
   reviewCount,
+  stimulationLevel,
 }: VideoCardProps) {
   const parsedTags: string[] = JSON.parse(tags);
   const ageGroup = AGE_GROUPS.find(
     (g) => g.ageMin === ageMin && g.ageMax === ageMax
   ) || AGE_GROUPS.find((g) => g.ageMin <= ageMin && g.ageMax >= ageMax);
+
+  const stimLabel = stimulationLevel
+    ? STIMULATION_LABELS.find((s) => s.level === Math.round(stimulationLevel))
+    : null;
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -50,7 +56,12 @@ export default function VideoCard({
             alt={title}
             className="w-full h-44 object-cover"
           />
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 flex gap-1">
+            {stimLabel && (
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${stimLabel.color}`}>
+                {stimLabel.label}
+              </span>
+            )}
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${ageGroup?.color || "bg-slate-100 text-slate-600"}`}>
               {ageGroup?.icon} {ageMin}-{ageMax}y
             </span>

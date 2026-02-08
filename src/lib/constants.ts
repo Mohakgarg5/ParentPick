@@ -62,7 +62,16 @@ export const FEEDBACK_CRITERIA = [
   { key: "educationalRating", label: "Educational Value", description: "How much did your child learn?" },
   { key: "ageAppropriateRating", label: "Age Appropriateness", description: "Was it right for your child's age?" },
   { key: "engagementRating", label: "Child Engagement", description: "How engaged was your child?" },
+  { key: "stimulationRating", label: "Stimulation Level", description: "1 = very calm, 5 = very stimulating" },
   { key: "overallRating", label: "Overall Rating", description: "Your overall impression" },
+] as const;
+
+export const STIMULATION_LABELS = [
+  { level: 1, label: "Very Calm", color: "bg-blue-100 text-blue-700" },
+  { level: 2, label: "Low-Stimulation", color: "bg-teal-100 text-teal-700" },
+  { level: 3, label: "Moderate", color: "bg-amber-100 text-amber-700" },
+  { level: 4, label: "Stimulating", color: "bg-orange-100 text-orange-700" },
+  { level: 5, label: "High-Stimulation", color: "bg-red-100 text-red-700" },
 ] as const;
 
 export const HELPFUL_TAGS = [
@@ -75,4 +84,19 @@ export const HELPFUL_TAGS = [
   "Encourages interaction",
   "Too stimulating",
   "Age appropriate",
+] as const;
+
+export const CONTENT_QUALITY_TAGS = [
+  "Low-stimulation",
+  "Slow-paced",
+  "Gentle music",
+  "No dialogue",
+  "Bright & colorful",
+  "Fast-paced",
+  "Loud / energetic",
+  "Real-world footage",
+  "Animated",
+  "Interactive / participatory",
+  "Repetitive (good for learning)",
+  "Short & sweet",
 ] as const;
