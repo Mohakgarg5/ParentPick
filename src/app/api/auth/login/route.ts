@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id, feedbackCompleted: true },
     });
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, email: user.email, onboardingComplete: user.onboardingComplete });
     const response = NextResponse.json({
       user: {
         id: user.id,

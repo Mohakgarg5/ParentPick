@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "parentpick-secret-key-change-in-pr
 export interface JWTPayload {
   userId: number;
   email: string;
+  onboardingComplete?: boolean;
 }
 
 export function signToken(payload: JWTPayload): string {

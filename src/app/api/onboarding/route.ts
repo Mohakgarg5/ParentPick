@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, signToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateAge } from "@/lib/age";
 
@@ -89,7 +89,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    // Re-issue token with onboardingComplete flag
+    const newToken = signToken({ userId: payload.userId, email: payload.email, onboardingComplete: true });
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("token", newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+    return response;
   } catch {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
