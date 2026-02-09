@@ -103,6 +103,11 @@ export default function DiscoverPage() {
     ? videos.filter((v) => preferredCategories.includes(v.category))
     : [];
 
+  const shownRecommendedIds = new Set(recommendedVideos.slice(0, 4).map((v) => v.id));
+  const remainingVideos = shownRecommendedIds.size > 0
+    ? videos.filter((v) => !shownRecommendedIds.has(v.id))
+    : videos;
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -225,14 +230,14 @@ export default function DiscoverPage() {
           <div className="animate-spin h-8 w-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto" />
           <p className="text-slate-500 mt-4">Loading content...</p>
         </div>
-      ) : videos.length === 0 ? (
+      ) : remainingVideos.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-500 text-lg">No videos found for this filter</p>
           <p className="text-slate-400 mt-1">Try a different age group or category</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {videos.map((video) => (
+          {remainingVideos.map((video) => (
             <VideoCard key={video.id} {...video} />
           ))}
         </div>
