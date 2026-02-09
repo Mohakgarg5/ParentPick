@@ -29,14 +29,19 @@ interface UserProfile {
 export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/profile")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(r.status === 401 ? "Please log in to view your profile" : "Failed to load profile");
+        return r.json();
+      })
       .then((data) => {
         if (data.user) setUser(data.user);
+        else setError("Could not load profile data");
       })
-      .catch(() => {})
+      .catch((e) => setError(e.message || "Something went wrong"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -44,6 +49,15 @@ export default function ProfilePage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center">
         <div className="animate-spin h-8 w-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8 text-center">
+        <p className="text-red-600 text-lg">{error}</p>
+        <a href="/login" className="text-teal-600 hover:underline mt-2 inline-block">Go to Login</a>
       </div>
     );
   }
