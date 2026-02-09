@@ -24,7 +24,7 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/onboarding";
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/onboarding" || pathname === "/forgot-password" || pathname === "/reset-password";
   if (isAuthPage) return null;
 
   const navLinks = [

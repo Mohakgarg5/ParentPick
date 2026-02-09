@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { signToken } from "@/lib/auth";
+import { signToken, setAuthCookie } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +13,12 @@ export async function POST(request: NextRequest) {
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
+      if (existing.googleId) {
+        return NextResponse.json(
+          { error: "An account with this email uses Google Sign-In. Please sign in with Google." },
+          { status: 400 }
+        );
+      }
       return NextResponse.json({ error: "Email already registered" }, { status: 400 });
     }
 
@@ -23,13 +29,7 @@ export async function POST(request: NextRequest) {
 
     const token = signToken({ userId: user.id, email: user.email, onboardingComplete: false });
     const response = NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } });
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    setAuthCookie(response, token);
     return response;
   } catch {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

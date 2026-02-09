@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +11,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleRedirect = (user: { onboardingComplete: boolean; reviewCount: number }) => {
+    if (!user.onboardingComplete) {
+      router.push("/onboarding");
+    } else if (user.reviewCount < 3) {
+      router.push("/review-gate");
+    } else {
+      router.push("/discover");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,15 +40,34 @@ export default function LoginPage() {
         return;
       }
 
-      if (!data.user.onboardingComplete) {
-        router.push("/onboarding");
-      } else if (data.user.reviewCount < 3) {
-        router.push("/review-gate");
-      } else {
-        router.push("/discover");
-      }
+      handleRedirect(data.user);
     } catch {
       setError("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async (credential: string) => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
+
+      handleRedirect(data.user);
+    } catch {
+      setError("Google sign-in failed");
     } finally {
       setLoading(false);
     }
@@ -61,6 +91,17 @@ export default function LoginPage() {
               {error}
             </div>
           )}
+
+          <GoogleSignInButton onSuccess={handleGoogleLogin} />
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-4 text-slate-400">or</span>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -89,6 +130,12 @@ export default function LoginPage() {
                 placeholder="Your password"
                 required
               />
+            </div>
+
+            <div className="text-right">
+              <Link href="/forgot-password" className="text-sm text-teal-600 hover:underline">
+                Forgot your password?
+              </Link>
             </div>
 
             <button

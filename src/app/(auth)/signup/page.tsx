@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -44,6 +45,35 @@ export default function SignupPage() {
     }
   };
 
+  const handleGoogleSignup = async (credential: string) => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
+
+      if (!data.user.onboardingComplete) {
+        router.push("/onboarding");
+      } else {
+        router.push("/discover");
+      }
+    } catch {
+      setError("Google sign-up failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFF7ED] flex items-center justify-center px-4">
       <div className="max-w-md w-full">
@@ -62,6 +92,17 @@ export default function SignupPage() {
               {error}
             </div>
           )}
+
+          <GoogleSignInButton onSuccess={handleGoogleSignup} />
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-4 text-slate-400">or</span>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

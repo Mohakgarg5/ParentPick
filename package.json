@@ -18,12 +18,14 @@
     "@prisma/adapter-libsql": "^6.19.2",
     "@prisma/client": "^6.19.2",
     "bcryptjs": "^3.0.3",
+    "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
     "next": "16.1.6",
     "prisma": "^6.19.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-lite-youtube-embed": "^3.3.3"
+    "react-lite-youtube-embed": "^3.3.3",
+    "resend": "^6.9.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

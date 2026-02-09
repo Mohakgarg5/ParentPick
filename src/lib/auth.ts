@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 const JWT_SECRET = process.env.JWT_SECRET || "parentpick-secret-key-change-in-production";
 
@@ -19,6 +20,16 @@ export function verifyToken(token: string): JWTPayload | null {
   } catch {
     return null;
   }
+}
+
+export function setAuthCookie(response: NextResponse, token: string): void {
+  response.cookies.set("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  });
 }
 
 export async function getCurrentUser(): Promise<JWTPayload | null> {

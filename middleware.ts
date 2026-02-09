@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
-  const publicPaths = ["/login", "/signup"];
+  const publicPaths = ["/login", "/signup", "/forgot-password", "/reset-password"];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
   const isOnboarding = pathname.startsWith("/onboarding");
 
