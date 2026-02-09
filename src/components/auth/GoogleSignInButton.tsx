@@ -8,8 +8,11 @@ interface Props {
 }
 
 export default function GoogleSignInButton({ onSuccess }: Props) {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const buttonRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
+
+  if (!clientId) return null;
 
   const initializeGoogle = () => {
     if (!window.google || !buttonRef.current || initializedRef.current) return;
