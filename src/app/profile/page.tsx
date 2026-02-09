@@ -34,12 +34,16 @@ export default function ProfilePage() {
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => {
-        if (!r.ok) throw new Error(r.status === 401 ? "Please log in to view your profile" : "Failed to load profile");
+        if (r.status === 401 || r.status === 404) {
+          window.location.href = "/login";
+          return null;
+        }
+        if (!r.ok) throw new Error("Failed to load profile");
         return r.json();
       })
       .then((data) => {
-        if (data.user) setUser(data.user);
-        else setError("Could not load profile data");
+        if (data?.user) setUser(data.user);
+        else if (data) setError("Could not load profile data");
       })
       .catch((e) => setError(e.message || "Something went wrong"))
       .finally(() => setLoading(false));

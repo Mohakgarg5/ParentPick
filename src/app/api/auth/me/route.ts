@@ -28,7 +28,10 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      // Clear stale token cookie if user no longer exists
+      const res = NextResponse.json({ error: "User not found" }, { status: 404 });
+      res.cookies.set("token", "", { maxAge: 0, path: "/" });
+      return res;
     }
 
     // Add calculated ages to children
