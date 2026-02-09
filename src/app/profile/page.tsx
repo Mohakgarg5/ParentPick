@@ -33,13 +33,18 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetch("/api/profile")
-      .then((r) => {
-        if (r.status === 401 || r.status === 404) {
-          window.location.href = "/login";
-          return null;
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          if (r.status === 401 || r.status === 404) {
+            // Stale token or user not found - logout and redirect
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+            return null;
+          }
+          throw new Error(data.error || "Failed to load profile");
         }
-        if (!r.ok) throw new Error("Failed to load profile");
-        return r.json();
+        return data;
       })
       .then((data) => {
         if (data?.user) setUser(data.user);
