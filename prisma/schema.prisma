@@ -129,6 +129,7 @@ model Post {
   title        String
   content      String
   link         String?
+  imageUrl     String?
   userId       Int
   groupId      Int
   upvotes      Int       @default(0)

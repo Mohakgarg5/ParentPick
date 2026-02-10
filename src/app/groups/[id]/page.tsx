@@ -8,6 +8,7 @@ interface Post {
   title: string;
   content: string;
   link: string | null;
+  imageUrl: string | null;
   upvotes: number;
   downvotes: number;
   score: number;
@@ -37,6 +38,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [content, setContent] = useState("");
   const [link, setLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const fetchPosts = () => {
     fetch(`/api/groups/${id}/posts?sort=${sort}`)
@@ -45,7 +49,35 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       .catch(() => {});
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("Please select a JPG, PNG, GIF, or WEBP image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError("Image must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setImageError(null);
+  };
+
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.user) setCurrentUserId(data.user.id); })
+      .catch(() => {});
+
     Promise.all([
       fetch(`/api/groups/${id}`).then((r) => r.json()),
       fetch(`/api/groups/${id}/posts?sort=${sort}`).then((r) => r.json()),
@@ -61,6 +93,16 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (!loading) fetchPosts();
   }, [sort]);
+
+  const handleDeletePost = async (postId: number) => {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+    try {
+      const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      if (res.ok) {
+        setPosts(posts.filter((p) => p.id !== postId));
+      }
+    } catch {}
+  };
 
   const handleVote = async (postId: number, value: number) => {
     try {
@@ -87,12 +129,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       const res = await fetch(`/api/groups/${id}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, link: link || undefined }),
+        body: JSON.stringify({ title, content, link: link || undefined, imageUrl: imagePreview || undefined }),
       });
       if (res.ok) {
         setTitle("");
         setContent("");
         setLink("");
+        setImagePreview(null);
+        setImageError(null);
         setShowForm(false);
         fetchPosts();
       }
@@ -167,8 +211,46 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
               value={link}
               onChange={(e) => setLink(e.target.value)}
               placeholder="Link (optional)"
-              className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 mb-4"
+              className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 mb-3"
             />
+            {/* Image Upload */}
+            <div className="mb-4">
+              {!imagePreview ? (
+                <label className="flex items-center justify-center w-full h-28 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-teal-400 transition-colors">
+                  <div className="text-center">
+                    <svg className="mx-auto h-7 w-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm text-slate-500 mt-1">Click to upload an image</p>
+                    <p className="text-xs text-slate-400">JPG, PNG, GIF, WEBP (max 2MB)</p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full max-h-48 object-contain rounded-lg border border-slate-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+              {imageError && (
+                <p className="text-red-500 text-sm mt-1">{imageError}</p>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -244,6 +326,15 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     </h3>
                   </Link>
                   <p className="text-slate-600 text-sm mt-1 line-clamp-2">{post.content}</p>
+                  {post.imageUrl && (
+                    <div className="mt-2">
+                      <img
+                        src={post.imageUrl}
+                        alt="Post image"
+                        className="w-full max-h-40 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
                   {post.link && (
                     <a
                       href={post.link}
@@ -263,6 +354,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     >
                       {post.commentCount} comments
                     </Link>
+                    {currentUserId === post.user.id && (
+                      <button
+                        onClick={() => handleDeletePost(post.id)}
+                        className="text-red-400 hover:text-red-600 transition-colors ml-auto"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

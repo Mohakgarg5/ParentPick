@@ -53,3 +53,42 @@ export async function POST(
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const payload = await getCurrentUser();
+    if (!payload) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const postId = parseInt(id);
+    const { searchParams } = new URL(request.url);
+    const commentId = parseInt(searchParams.get("commentId") || "");
+
+    if (!commentId) {
+      return NextResponse.json({ error: "Comment ID is required" }, { status: 400 });
+    }
+
+    const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+    if (!comment) {
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+    }
+    if (comment.userId !== payload.userId) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    await prisma.comment.delete({ where: { id: commentId } });
+    await prisma.post.update({
+      where: { id: postId },
+      data: { commentCount: { decrement: 1 } },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Comment {
   id: number;
@@ -15,6 +16,7 @@ interface Post {
   title: string;
   content: string;
   link: string | null;
+  imageUrl: string | null;
   upvotes: number;
   downvotes: number;
   score: number;
@@ -29,11 +31,13 @@ export default function PostDetailPage({
   params: Promise<{ id: string; postId: string }>;
 }) {
   const { id, postId } = use(params);
+  const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const fetchComments = () => {
     fetch(`/api/posts/${postId}/comments`)
@@ -43,6 +47,11 @@ export default function PostDetailPage({
   };
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.user) setCurrentUserId(data.user.id); })
+      .catch(() => {});
+
     Promise.all([
       fetch(`/api/groups/${id}/posts`)
         .then((r) => r.json())
@@ -99,6 +108,25 @@ export default function PostDetailPage({
     setSubmitting(false);
   };
 
+  const handleDeletePost = async () => {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+    try {
+      const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      if (res.ok) router.push(`/groups/${id}`);
+    } catch {}
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm("Delete this comment?")) return;
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments?commentId=${commentId}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchComments();
+        if (post) setPost({ ...post, commentCount: post.commentCount - 1 });
+      }
+    } catch {}
+  };
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8 text-center">
@@ -138,8 +166,25 @@ export default function PostDetailPage({
             <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
               <span>by {post.user.name}</span>
               <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+              {currentUserId === post.user.id && (
+                <button
+                  onClick={handleDeletePost}
+                  className="text-red-400 hover:text-red-600 transition-colors ml-auto"
+                >
+                  Delete
+                </button>
+              )}
             </div>
             <p className="text-slate-700 mt-4 whitespace-pre-wrap">{post.content}</p>
+            {post.imageUrl && (
+              <div className="mt-4">
+                <img
+                  src={post.imageUrl}
+                  alt="Post image"
+                  className="w-full max-h-96 object-contain rounded-lg border border-slate-100"
+                />
+              </div>
+            )}
             {post.link && (
               <a
                 href={post.link}
@@ -194,6 +239,14 @@ export default function PostDetailPage({
                 <span className="text-xs text-slate-400">
                   {new Date(comment.createdAt).toLocaleDateString()}
                 </span>
+                {currentUserId === comment.user.id && (
+                  <button
+                    onClick={() => handleDeleteComment(comment.id)}
+                    className="text-red-400 hover:text-red-600 text-xs transition-colors ml-auto"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
               <p className="text-slate-600 text-sm">{comment.content}</p>
             </div>

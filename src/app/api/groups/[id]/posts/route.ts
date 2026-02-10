@@ -48,10 +48,30 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { title, content, link } = await request.json();
+    const { title, content, link, imageUrl } = await request.json();
 
     if (!title || !content) {
       return NextResponse.json({ error: "Title and content are required" }, { status: 400 });
+    }
+
+    // Validate image if provided
+    if (imageUrl) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const dataUrlMatch = imageUrl.match(/^data:(image\/\w+);base64,/);
+      if (!dataUrlMatch || !allowedTypes.includes(dataUrlMatch[1])) {
+        return NextResponse.json(
+          { error: "Invalid image format. Allowed: JPG, PNG, GIF, WEBP" },
+          { status: 400 }
+        );
+      }
+      const base64Data = imageUrl.split(',')[1];
+      const approximateBytes = base64Data.length * 0.75;
+      if (approximateBytes > 2 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: "Image too large. Maximum size is 2MB" },
+          { status: 400 }
+        );
+      }
     }
 
     const post = await prisma.post.create({
@@ -59,6 +79,7 @@ export async function POST(
         title,
         content,
         link: link || null,
+        imageUrl: imageUrl || null,
         userId: payload.userId,
         groupId: parseInt(id),
       },
